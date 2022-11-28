@@ -1,0 +1,48 @@
+#!/bin/bash
+mkdir /data
+mkdir /home/wwwlogs
+cd /data
+groupadd -r www
+useradd -r -g www -s /bin/false -M  www
+wget https://www.php.net/distributions/php-7.0.33.tar.gz
+tar -xf php-7.0.33.tar.gz
+cd php-7.0.33/
+yum install gcc -y && yum install libxml2-devel -y && yum install openssl-devel -y && yum install curl-devel -y && yum install libjpeg-devel -y \
+ && yum install libpng-devel -y && yum install libXpm-devel -y && yum install freetype-devel -y && yum install libmcrypt-devel -y && yum install make -y \
+&& yum install autoconf -y \
+ yum install ImageMagick-devel -y \
+ yum install libssh2-devel -y && yum install gcc-c++ -y && yum install cyrus-sasl-devel -y 
+yum install -y libxml2-devel libjpeg-devel libXpm-devel libmcrypt-devel
+make clean all
+ ./configure    \
+--prefix=/usr/local/php \
+--with-config-file-path=/usr/local/php/etc \
+--with-config-file-scan-dir=/usr/local/php/etc/php.d \
+--disable-ipv6 \
+--enable-bcmath \
+--enable-calendar  --enable-exif  --enable-fpm  \
+--with-fpm-user=www \
+--with-fpm-group=www \
+--enable-ftp --enable-gd-jis-conv \
+--enable-gd-native-ttf  \
+--enable-inline-optimization \
+--enable-mbregex --enable-mbstring --enable-mysqlnd \
+--enable-opcache --enable-pcntl \
+--enable-shmop --enable-soap --enable-sockets \
+--enable-static --enable-sysvsem \
+--enable-wddx --enable-xml  \
+--with-curl --with-gd \
+--with-jpeg-dir --with-freetype-dir \
+--with-xpm-dir --with-png-dir \
+--with-gettext --with-iconv \
+--with-libxml-dir --with-mcrypt \
+--with-mhash --with-mysqli \
+--with-pdo-mysql --with-pear \
+--with-openssl --with-xmlrpc \
+--with-zlib --disable-debug \
+--disable-phpdbg
+make && make install
+cp /data/php-7.0.33/sapi/fpm/init.d.php-fpm /etc/init.d/php-fpm
+chmod a+x /etc/init.d/php-fpm
+echo "请导入配置文件再启动 /etc/init.d/php-fpm  start"
+#/etc/init.d/php-fpm  start

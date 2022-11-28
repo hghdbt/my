@@ -1,0 +1,21 @@
+#!/bin/bash
+mkdir /data
+cd /data
+#wget  https://download.redis.io/releases/redis-5.0.14.tar.gz 
+tar -xf redis-5.0.14.tar.gz
+mv redis-5.0.14  redis
+yum -y install gcc automake autoconf libtool make  jemalloc jemalloc-devel gcc-c++
+cd redis
+#make MALLOC=libc
+make clean && make > /dev/null
+echo 'export PATH=/data/redis/src:$PATH' >> /etc/profile
+source /etc/profile 
+echo 511 >/proc/sys/net/core/somaxconn
+echo 'net.core.somaxconn= 1024' >>/etc/sysctl.conf
+echo 'vm.overcommit_memory = 1' >>/etc/sysctl.conf
+echo never > /sys/kernel/mm/transparent_hugepage/enabled
+echo "echo never > /sys/kernel/mm/transparent_hugepage/enabled" >>/etc/rc.local
+chmod +x /etc/rc.d/rc.local
+sysctl -p >/dev/null
+/data/redis/src/redis-server & 
+echo "需: source /etc/profile"

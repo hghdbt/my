@@ -1,0 +1,39 @@
+#!/bin/bash
+rpm -e mariadb-libs-5.5.52-1.el7.x86_64 --nodeps
+cd  /usr/local/src/
+wget https://mirrors.aliyun.com/mysql/MySQL-5.7/mysql-5.7.36-linux-glibc2.12-x86_64.tar.gz
+tar -xf mysql-5.7.36-linux-glibc2.12-x86_64.tar.gz
+mv mysql-5.7.36-linux-glibc2.12-x86_64 /usr/local/mysql
+cd /usr/local/mysql/
+echo "export PATH=$PATH:/usr/local/mysql/bin" >> /etc/profile 
+source /etc/profile
+mkdir data
+mkdir binlog
+mkdir log
+groupadd mysql && useradd -r -g mysql -s /bin/false mysql
+cat >/etc/my.cnf<<EOF
+[mysqld]
+basedir=/usr/local/mysql
+datadir=/usr/local/mysql/data
+pid-file=/usr/local/mysql/data/mysqld.pid
+socket=/usr/local/mysql/mysql.sock
+log_error=/usr/local/mysql/log/mysql.err
+log_bin=/usr/local/mysql/binlog/mysql-bin
+binlog_format=row
+gtid-mode=on
+enforce-gtid-consistency=true
+log-slave-updates=1
+secure-file-priv=/
+[mysql]
+socket=/usr/local/mysql/mysql.sock
+prompt=Master [\\d]>
+EOF
+yum install -y libaio #初始化必要的库
+chmod 750 data/ && chown -R mysql . && chgrp -R mysql . && bin/mysqld --initialize --user=mysql
+cp /usr/local/mysql/support-files/mysql.server /etc/init.d/mysqld 
+chmod a+x /etc/init.d/mysqld
+/etc/init.d/mysqld start
+echo "service mysqld  force-reload  | reload  | restart | start | status | stop"
+echo "初始密码:"
+cat /usr/local/mysql/log/mysql.err | grep  password | awk '{print$NF}'
+echo "第一次登录后需更改密码:mysql -uroot -p初始密码;ALTER  USER   'root'@'localhost'   IDENTIFIED BY 'new passwd'; flush privileges;"

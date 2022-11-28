@@ -1,0 +1,218 @@
+k8s ci/cd代码部署模板：
+tag=`date "+%d%H%M%S"`
+cd /var/lib/jenkins/workspace
+cat >Dockerfile<< EOF
+FROM registry.cn-shenzhen.aliyuncs.com/adif0028/nginx_php:74v3
+COPY ${JOB_NAME} /data
+COPY zentao.conf /usr/local/nginx/conf/vhost/zentao.conf
+COPY php.ini /usr/local/php/etc/php.ini
+RUN chmod -R 777 /data/
+EOF
+docker build -t $JOB_NAME:$tag .
+ID=`sudo docker images | grep $tag | awk '{print$3}'`
+docker tag $ID registry.cn-shenzhen.aliyuncs.com/adif0028/zentao:$tag
+docker push registry.cn-shenzhen.aliyuncs.com/adif0028/zentao:$tag
+
+
+echo "-- generate yaml for kubernetes deployment --"
+touch deploy.yaml && chmod 777 deploy.yaml
+cat > deploy.yaml << EOF
+apiVersion: v1 #定义svc的api版本
+kind: Service #定义类型为svc
+metadata:     #svc元数据
+  name: $JOB_NAME #svc的名字
+  labels:     #给svc打标签
+    app: $JOB_NAME #标签名与映射值 
+spec:          #svc的属性（声明式属性）
+  selector:    #属性的标签匹配
+    app: $JOB_NAME #所匹配标签名与映射值
+  ports:       #暴露svc的端口
+    - port: 80 #svc暴露的端口值 
+      targetPort: 80
+  #映射容器暴露的端口值
+---
+apiVersion: apps/v1 #定义pod控制器api所使用的协议版本
+kind: Deployment    #定义pod控制器类型
+metadata:           #控制器的元数据
+  name: $JOB_NAME      #控制器的名字
+  labels:           #给控制器打标签
+    app: $JOB_NAME     #控制器的标签与映射值
+spec:               #定义控制的属性（声明式）
+  replicas: 2       #定义控制器生成副本数
+  selector:         #控制器算选匹配标签
+    matchLabels:    #声明匹配标签
+      app: $JOB_NAME    #所匹配的标签值与映射值（此值来源与控制器）
+  template:         #控制器的模板
+    metadata:       #控制器模板元数据
+      labels:       #控制器模板精准标签匹配
+        app: $JOB_NAME  #所匹配的标签与值（一般svc，控制器所选标签为一致的。目的是为了简洁容易匹配)
+    spec:           #定义容器属性（声明式）
+      containers:   #容器相关属性
+      - name: $JOB_NAME #容器名字 
+        image: registry.cn-shenzhen.aliyuncs.com/adif0028/zentao:$tag #容器所用镜像
+        livenessProbe:
+          tcpSocket:
+            port: 80
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+        readinessProbe:
+          tcpSocket:
+            port: 80
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 2048Mi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+        ports:              #声明容器端口
+        - containerPort: 80 #容器所暴露的端口
+---
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: $JOB_NAME
+spec:
+  minReplicas: 1
+  maxReplicas: 5
+  scaleTargetRef:
+    kind: Deployment
+    name: $JOB_NAME
+    apiVersion: apps/v1
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: $JOB_NAME
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: uplooking.zento.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+         service:
+           name: $JOB_NAME
+           port:
+             number: 80
+EOF
+kubectl apply -f  deploy.yamltag=`date "+%d%H%M%S"`
+cd /var/lib/jenkins/workspace
+cat >Dockerfile<< EOF
+FROM registry.cn-shenzhen.aliyuncs.com/adif0028/nginx_php:74v3
+COPY ${JOB_NAME} /data
+COPY zentao.conf /usr/local/nginx/conf/vhost/zentao.conf
+COPY php.ini /usr/local/php/etc/php.ini
+RUN chmod -R 777 /data/
+EOF
+docker build -t $JOB_NAME:$tag .
+ID=`sudo docker images | grep $tag | awk '{print$3}'`
+docker tag $ID registry.cn-shenzhen.aliyuncs.com/adif0028/zentao:$tag
+docker push registry.cn-shenzhen.aliyuncs.com/adif0028/zentao:$tag
+
+
+echo "-- generate yaml for kubernetes deployment --"
+touch deploy.yaml && chmod 777 deploy.yaml
+cat > deploy.yaml << EOF
+apiVersion: v1 #定义svc的api版本
+kind: Service #定义类型为svc
+metadata:     #svc元数据
+  name: $JOB_NAME #svc的名字
+  labels:     #给svc打标签
+    app: $JOB_NAME #标签名与映射值 
+spec:          #svc的属性（声明式属性）
+  selector:    #属性的标签匹配
+    app: $JOB_NAME #所匹配标签名与映射值
+  ports:       #暴露svc的端口
+    - port: 80 #svc暴露的端口值 
+      targetPort: 80
+  #映射容器暴露的端口值
+---
+apiVersion: apps/v1 #定义pod控制器api所使用的协议版本
+kind: Deployment    #定义pod控制器类型
+metadata:           #控制器的元数据
+  name: $JOB_NAME      #控制器的名字
+  labels:           #给控制器打标签
+    app: $JOB_NAME     #控制器的标签与映射值
+spec:               #定义控制的属性（声明式）
+  replicas: 2       #定义控制器生成副本数
+  selector:         #控制器算选匹配标签
+    matchLabels:    #声明匹配标签
+      app: $JOB_NAME    #所匹配的标签值与映射值（此值来源与控制器）
+  template:         #控制器的模板
+    metadata:       #控制器模板元数据
+      labels:       #控制器模板精准标签匹配
+        app: $JOB_NAME  #所匹配的标签与值（一般svc，控制器所选标签为一致的。目的是为了简洁容易匹配)
+    spec:           #定义容器属性（声明式）
+      containers:   #容器相关属性
+      - name: $JOB_NAME #容器名字 
+        image: registry.cn-shenzhen.aliyuncs.com/adif0028/zentao:$tag #容器所用镜像
+        livenessProbe:
+          tcpSocket:
+            port: 80
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+        readinessProbe:
+          tcpSocket:
+            port: 80
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 2048Mi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+        ports:              #声明容器端口
+        - containerPort: 80 #容器所暴露的端口
+---
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: $JOB_NAME
+spec:
+  minReplicas: 1
+  maxReplicas: 5
+  scaleTargetRef:
+    kind: Deployment
+    name: $JOB_NAME
+    apiVersion: apps/v1
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: $JOB_NAME
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: uplooking.zento.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+         service:
+           name: $JOB_NAME
+           port:
+             number: 80
+EOF
+kubectl apply -f  deploy.yaml

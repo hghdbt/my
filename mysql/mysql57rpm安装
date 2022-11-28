@@ -1,0 +1,14 @@
+#!/bin/bash
+yum install -y perl
+yum remove mariadb-libs -y
+rz
+
+sleep 2
+rpm  -ivh  mysql-community-common-5.7.38-1.el7.x86_64.rpm
+rpm  -ivh  mysql-community-libs-5.7.38-1.el7.x86_64.rpm
+rpm  -ivh  mysql-community-libs-compat-5.7.38-1.el7.x86_64.rpm
+rpm  -ivh  mysql-community-client-5.7.38-1.el7.x86_64.rpm
+rpm  -ivh  mysql-community-devel-5.7.38-1.el7.x86_64.rpm
+rpm  -ivh  mysql-community-server-5.7.38-1.el7.x86_64.rpm
+systemctl  start mysqld
+systemctl status mysqld

@@ -1,0 +1,58 @@
+#!/bin/bash
+yum remove mariadb-libs -y
+yum install openssl openssl-devel -y
+yum  -y   install   gcc-c++   ncurses-devel   cmake
+yum install bison* -y
+useradd mysql -s /sbin/nologin
+mkdir -p /usr/local/mysql
+chown mysql:mysql -R /usr/local/mysql
+mkdir -p /data/mysqldata
+mkdir -p /var/log/mysql
+echo 'export PATH=/usr/local/mysql/bin:$PATH' >>/etc/profile
+source /etc/profile
+chown mysql:mysql -R /data/mysqldata
+chown mysql:mysql -R /var/log/mysql
+cd /tmp
+wget https://mirrors.aliyun.com/mysql/MySQL-5.7/mysql-boost-5.7.36.tar.gz
+tar -xf mysql-boost-5.7.36.tar.gz
+cd mysql-5.7.36/ 
+cp -rf boost/ /usr/local/
+rm -rf CMakeCache.txt
+cmake \
+   -DCMAKE_INSTALL_PREFIX=/usr/local/mysql \
+   -DMYSQL_DATADIR=/data/mysqldata         \
+   -DDEFAULT_CHARSET=utf8 \
+   -DDEFAULT_COLLATION=utf8_general_ci \
+   -DMYSQL_TCP_PORT=3306 \
+   -DMYSQL_UNIX_ADDR=/tmp/mysql.sock \
+   -DWITH_MYISAM_STORAGE_ENGINE=1 \
+   -DWITH_INNOBASE_STORAGE_ENGINE=1 \
+   -DDOWNLOAD_BOOST=1 \
+   -DWITH_BOOST=/usr/local/boost \
+   -DWITH_INNODB_MEMCACHED=ON 
+make && make install
+cat > /etc/my.cnf <<EOF
+[mysqld]
+user=mysql
+basedir=/usr/local/mysql
+datadir=/data/mysqldata
+server_id=6
+log-error=/var/log/mysql/error.log
+pid-file=/data/mysqldata/mysql.pid
+port=3306
+socket=/tmp/mysql.sock
+[mysql]
+socket=/tmp/mysql.sock
+EOF
+chown mysql:mysql /etc/my.cnf
+cd /usr/local/mysql/bin
+./mysqld --initialize  --user=mysql --basedir=/usr/local/mysql --datadir=/data/mysqldata
+cp /usr/local/mysql/support-files/mysql.server /etc/init.d/mysqld
+/etc/init.d/mysqld start
+chkconfig --add mysqld
+echo '下面有初始密码:'
+journalctl -ex |grep password
+echo '登录前请执行 source /etc/profile'
+
+
+
